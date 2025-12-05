@@ -605,13 +605,6 @@ const TravelToolApp = () => {
         {activeTab === 'expense' && <ExpenseTab />}
         {activeTab === 'packing' && <PackingTab />}
       </main>
-
-      {/* 頁尾 */}
-      <footer className="bg-white border-t mt-12 py-6">
-        <div className="max-w-7xl mx-auto px-4 text-center text-gray-500">
-          <p>💡 提示：資料已連接後端 API，可跨裝置同步</p>
-        </div>
-      </footer>
     </div>
   );
 };
