@@ -108,7 +108,7 @@ const TravelToolApp = () => {
               <div className="text-sm opacity-80">總旅行天數</div>
             </div>
             <div>
-              <div className="text-3xl font-bold">${(stats.total_cost || 0).toLocaleString()}</div>
+              <div className="text-3xl font-bold">${stats.total_cost || 0}</div>
               <div className="text-sm opacity-80">總花費</div>
             </div>
           </div>
