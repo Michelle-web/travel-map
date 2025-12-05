@@ -1,0 +1,33 @@
+vite 安裝
+npm create vite@latest my-travel-map --template react
+cd my-travel-map
+npm install
+npm run dev
+
+css 安裝
+npm install react lucide-react
+npm install -D tailwindcss postcss autoprefixer
+
+git
+# 1. 開專案資料夾後：
+git init
+git remote add origin https://github.com/你的帳號/travel-map-ai.git
+# 2. 工作到一段落就 commit + push
+git add .
+git commit -m "add weather api"
+git push origin main
+# 3. clone 專案（每天進公司第一件事）
+git clone git@github.com:你的帳號/travel-map-ai.git
+cd travel-map-ai
+
+py
+# 1. 建立虛擬環境
+python -m venv venv
+venv\Scripts\activate
+# 2. 安裝套件
+pip install -r requirements.txt
+# 3. 啟動伺服器
+python app.py
+# 4. 伺服器會在 http://localhost:5000 啟動
+# 5. 從venv出來
+deacrivate
