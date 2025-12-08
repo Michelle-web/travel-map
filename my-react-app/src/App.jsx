@@ -246,9 +246,9 @@ const TravelToolApp = () => {
             <TrendingUp size={32} />
             <h2 className="text-2xl font-bold">💰 旅遊花費記錄</h2>
           </div>
-          <p className="text-3xl font-bold mt-2">總花費: ${totalCost.toLocaleString()}</p>
+          <p className="text-3xl font-bold mt-2">總花費: ${totalCost}</p>
           {expenses.length > 0 && (
-            <p className="mt-2 opacity-90">平均每次旅行: ${(totalCost / expenses.length).toLocaleString()}</p>
+            <p className="mt-2 opacity-90">平均每次旅行: ${(totalCost / expenses.length)}</p>
           )}
         </div>
 
