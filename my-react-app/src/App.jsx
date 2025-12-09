@@ -326,7 +326,7 @@ const TravelToolApp = () => {
                       <span className="font-semibold">{item.country}</span>
                     </div>
                     <div className="text-gray-600">{item.days} 天</div>
-                    <div className="font-bold text-green-600">${parseFloat(item.cost).toLocaleString()}</div>
+                    <div className="font-bold text-green-600">${parseFloat(item.cost)}</div>
                     <div className="text-gray-500">{item.note || '-'}</div>
                   </div>
                   <div className="flex gap-2">
