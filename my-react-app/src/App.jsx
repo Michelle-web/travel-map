@@ -7,18 +7,18 @@ const TravelToolApp = () => {
   const [activeTab, setActiveTab] = useState('map');
   const [expenses, setExpenses] = useState([]);
   const [packingList, setPackingList] = useState([]);
-  const [stats, setStats] = useState(null); //設定null是因為避免渲染的時候提前嘗試讀取不存在的資料
+  const [stats, setStats] = useState(null);
   const [selectedCountry, setSelectedCountry] = useState(null);
   const [weather, setWeather] = useState(null);
   const [exchange, setExchange] = useState(null);
   const [loading, setLoading] = useState(false);
 
-  // 渲染完畫面後，才會跑 useEffect
+  // 載入資料
   useEffect(() => {
     loadExpenses();
     loadPackingList();
     loadStats();
-  }, []); //空的[]表示只在component出現在畫面上時執行一次
+  }, []);
 
   // ========== API 呼叫函數 ==========
   
@@ -108,7 +108,7 @@ const TravelToolApp = () => {
               <div className="text-sm opacity-80">總旅行天數</div>
             </div>
             <div>
-              <div className="text-3xl font-bold">${stats.total_cost || 0}</div>
+              <div className="text-3xl font-bold">${(stats.total_cost || 0).toLocaleString()}</div>
               <div className="text-sm opacity-80">總花費</div>
             </div>
           </div>
@@ -173,37 +173,71 @@ const TravelToolApp = () => {
 
   // 分頁 2: 花費記錄
   const ExpenseTab = () => {
-    const [form, setForm] = useState({ country: '', days: '', cost: '', note: '' });
+    const [selectedCountry, setSelectedCountryExpense] = useState(null);
+    const [showAddCountry, setShowAddCountry] = useState(false);
+    const [newCountryName, setNewCountryName] = useState('');
+    const [form, setForm] = useState({ days: '', cost: '', note: '' });
     const [editId, setEditId] = useState(null);
     const [saving, setSaving] = useState(false);
 
+    // 取得所有國家列表（去重複）
+    const countryList = [...new Set(expenses.map(e => e.country))].sort();
+
+    // 取得選中國家的所有花費記錄
+    const selectedExpenses = selectedCountry 
+      ? expenses.filter(e => e.country === selectedCountry)
+      : [];
+
+    // 計算選中國家的統計
+    const countryTotal = selectedExpenses.reduce((sum, e) => sum + parseFloat(e.cost || 0), 0);
+    const countryDays = selectedExpenses.reduce((sum, e) => sum + parseInt(e.days || 0), 0);
+
+    const handleAddCountry = () => {
+      if (!newCountryName.trim()) {
+        alert('請輸入國家名稱');
+        return;
+      }
+      setSelectedCountryExpense(newCountryName.trim());
+      setNewCountryName('');
+      setShowAddCountry(false);
+    };
+
     const handleSubmit = async () => {
-      if (!form.country || !form.days || !form.cost) {
-        alert('請填寫必填欄位');
+      if (!selectedCountry) {
+        alert('請先選擇國家');
+        return;
+      }
+      if (!form.days || !form.cost) {
+        alert('請填寫天數和花費');
         return;
       }
 
       setSaving(true);
       try {
+        const data = {
+          country: selectedCountry,
+          days: parseInt(form.days),
+          cost: parseFloat(form.cost),
+          note: form.note
+        };
+
         if (editId !== null) {
-          // 更新
           await fetch(`${API_URL}/expenses/${editId}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(form)
+            body: JSON.stringify(data)
           });
         } else {
-          // 新增
           await fetch(`${API_URL}/expenses`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(form)
+            body: JSON.stringify(data)
           });
         }
         
         await loadExpenses();
         await loadStats();
-        setForm({ country: '', days: '', cost: '', note: '' });
+        setForm({ days: '', cost: '', note: '' });
         setEditId(null);
       } catch (error) {
         console.error('儲存失敗:', error);
@@ -214,7 +248,6 @@ const TravelToolApp = () => {
 
     const handleEdit = (item) => {
       setForm({ 
-        country: item.country, 
         days: item.days.toString(), 
         cost: item.cost.toString(), 
         note: item.note || '' 
@@ -246,110 +279,222 @@ const TravelToolApp = () => {
             <TrendingUp size={32} />
             <h2 className="text-2xl font-bold">💰 旅遊花費記錄</h2>
           </div>
-          <p className="text-3xl font-bold mt-2">總花費: ${totalCost}</p>
+          <p className="text-3xl font-bold mt-2">總花費: ${totalCost.toLocaleString()}</p>
           {expenses.length > 0 && (
-            <p className="mt-2 opacity-90">平均每次旅行: ${(totalCost / expenses.length)}</p>
+            <p className="mt-2 opacity-90">總共去過 {countryList.length} 個國家，{expenses.length} 次旅行</p>
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 space-y-4">
-          <div className="grid md:grid-cols-4 gap-4">
-            <input
-              type="text"
-              placeholder="國家 *"
-              value={form.country}
-              onChange={(e) => setForm({...form, country: e.target.value})}
-              className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
-            />
-            <input
-              type="number"
-              placeholder="天數 *"
-              value={form.days}
-              onChange={(e) => setForm({...form, days: e.target.value})}
-              className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
-            />
-            <input
-              type="number"
-              placeholder="花費 (TWD) *"
-              value={form.cost}
-              onChange={(e) => setForm({...form, cost: e.target.value})}
-              className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
-            />
-            <input
-              type="text"
-              placeholder="備註"
-              value={form.note}
-              onChange={(e) => setForm({...form, note: e.target.value})}
-              className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
-            />
-          </div>
-          <div className="flex gap-2">
-            <button 
-              onClick={handleSubmit} 
-              disabled={saving}
-              className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 flex items-center gap-2 disabled:opacity-50"
-            >
-              {saving ? '儲存中...' : (
-                <>
-                  {editId !== null ? <Edit2 size={16} /> : <Plus size={16} />}
-                  {editId !== null ? '更新記錄' : '新增記錄'}
-                </>
-              )}
-            </button>
-            {editId !== null && (
-              <button 
-                onClick={() => {
-                  setForm({ country: '', days: '', cost: '', note: '' });
-                  setEditId(null);
-                }}
-                className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 flex items-center gap-2"
+        <div className="grid md:grid-cols-3 gap-6">
+          {/* 左側：國家列表 */}
+          <div className="bg-white rounded-lg shadow p-6">
+            <div className="flex justify-between items-center mb-4">
+              <h3 className="font-bold text-lg">🌏 選擇國家</h3>
+              <button
+                onClick={() => setShowAddCountry(!showAddCountry)}
+                className="text-green-500 hover:bg-green-50 p-2 rounded transition-colors"
+                title="新增國家"
               >
-                <X size={16} /> 取消編輯
+                <Plus size={20} />
               </button>
+            </div>
+
+            {showAddCountry && (
+              <div className="mb-4 flex gap-2">
+                <input
+                  type="text"
+                  placeholder="國家名稱"
+                  value={newCountryName}
+                  onChange={(e) => setNewCountryName(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleAddCountry()}
+                  className="flex-1 border rounded px-3 py-2 text-sm focus:ring-2 focus:ring-green-400 outline-none"
+                />
+                <button
+                  onClick={handleAddCountry}
+                  className="bg-green-500 text-white px-3 py-2 rounded hover:bg-green-600 text-sm"
+                >
+                  新增
+                </button>
+              </div>
+            )}
+
+            {countryList.length === 0 ? (
+              <div className="text-center py-8 text-gray-400">
+                <Globe size={32} className="mx-auto mb-2 opacity-50" />
+                <p className="text-sm">還沒有任何國家</p>
+                <p className="text-sm">點右上角 + 新增</p>
+              </div>
+            ) : (
+              <div className="space-y-2 max-h-96 overflow-y-auto">
+                {countryList.map((country) => {
+                  const countryExpenses = expenses.filter(e => e.country === country);
+                  const total = countryExpenses.reduce((sum, e) => sum + parseFloat(e.cost || 0), 0);
+                  
+                  return (
+                    <button
+                      key={country}
+                      onClick={() => setSelectedCountryExpense(country)}
+                      className={`w-full text-left p-3 rounded-lg transition-all ${
+                        selectedCountry === country
+                          ? 'bg-green-500 text-white shadow-lg'
+                          : 'bg-gray-50 hover:bg-gray-100'
+                      }`}
+                    >
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="font-semibold">{country}</div>
+                          <div className={`text-sm ${selectedCountry === country ? 'opacity-90' : 'text-gray-500'}`}>
+                            {countryExpenses.length} 次旅行
+                          </div>
+                        </div>
+                        <div className={`text-right ${selectedCountry === country ? 'opacity-90' : 'text-gray-600'}`}>
+                          <div className="font-bold">${total.toLocaleString()}</div>
+                        </div>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
-        </div>
 
-        {expenses.length === 0 ? (
-          <div className="bg-white rounded-lg shadow p-12 text-center text-gray-400">
-            <Package size={48} className="mx-auto mb-4 opacity-50" />
-            <p>還沒有任何旅行記錄，開始新增吧！</p>
-          </div>
-        ) : (
-          <div className="space-y-3">
-            {expenses.map((item) => (
-              <div key={item.id} className="bg-white rounded-lg shadow p-4 hover:shadow-lg transition-shadow">
-                <div className="flex justify-between items-center">
-                  <div className="flex-1 grid grid-cols-4 gap-4">
-                    <div>
-                      <span className="text-2xl mr-2">📍</span>
-                      <span className="font-semibold">{item.country}</span>
+          {/* 右側：選中國家的花費詳情 */}
+          <div className="md:col-span-2 space-y-4">
+            {!selectedCountry ? (
+              <div className="bg-white rounded-lg shadow p-12 text-center text-gray-400">
+                <MapPin size={48} className="mx-auto mb-4 opacity-50" />
+                <p>請從左側選擇一個國家</p>
+                <p className="text-sm mt-2">或點擊 + 新增國家</p>
+              </div>
+            ) : (
+              <>
+                {/* 國家統計 */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="text-xl font-bold mb-4">📊 {selectedCountry} 統計</h3>
+                  <div className="grid grid-cols-3 gap-4 text-center">
+                    <div className="p-4 bg-blue-50 rounded-lg">
+                      <div className="text-2xl font-bold text-blue-600">{selectedExpenses.length}</div>
+                      <div className="text-sm text-gray-600">次數</div>
                     </div>
-                    <div className="text-gray-600">{item.days} 天</div>
-                    <div className="font-bold text-green-600">${parseFloat(item.cost)}</div>
-                    <div className="text-gray-500">{item.note || '-'}</div>
+                    <div className="p-4 bg-purple-50 rounded-lg">
+                      <div className="text-2xl font-bold text-purple-600">{countryDays}</div>
+                      <div className="text-sm text-gray-600">總天數</div>
+                    </div>
+                    <div className="p-4 bg-green-50 rounded-lg">
+                      <div className="text-2xl font-bold text-green-600">${countryTotal.toLocaleString()}</div>
+                      <div className="text-sm text-gray-600">總花費</div>
+                    </div>
+                  </div>
+                </div>
+
+                {/* 新增/編輯表單 */}
+                <div className="bg-white rounded-lg shadow p-6 space-y-4">
+                  <h3 className="font-bold text-lg">
+                    {editId !== null ? '✏️ 編輯記錄' : '➕ 新增記錄'}
+                  </h3>
+                  <div className="grid md:grid-cols-3 gap-4">
+                    <input
+                      type="number"
+                      placeholder="天數 *"
+                      value={form.days}
+                      onChange={(e) => setForm({...form, days: e.target.value})}
+                      className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
+                    />
+                    <input
+                      type="number"
+                      placeholder="花費 (TWD) *"
+                      value={form.cost}
+                      onChange={(e) => setForm({...form, cost: e.target.value})}
+                      className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
+                    />
+                    <input
+                      type="text"
+                      placeholder="備註 (選填)"
+                      value={form.note}
+                      onChange={(e) => setForm({...form, note: e.target.value})}
+                      className="border rounded px-3 py-2 focus:ring-2 focus:ring-green-400 outline-none"
+                    />
                   </div>
                   <div className="flex gap-2">
                     <button 
-                      onClick={() => handleEdit(item)} 
-                      className="text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors"
-                      title="編輯"
+                      onClick={handleSubmit} 
+                      disabled={saving}
+                      className="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600 flex items-center gap-2 disabled:opacity-50"
                     >
-                      <Edit2 size={18} />
+                      {saving ? '儲存中...' : (
+                        <>
+                          {editId !== null ? <Edit2 size={16} /> : <Plus size={16} />}
+                          {editId !== null ? '更新' : '新增'}
+                        </>
+                      )}
                     </button>
-                    <button 
-                      onClick={() => handleDelete(item.id)} 
-                      className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
-                      title="刪除"
-                    >
-                      <Trash2 size={18} />
-                    </button>
+                    {editId !== null && (
+                      <button 
+                        onClick={() => {
+                          setForm({ days: '', cost: '', note: '' });
+                          setEditId(null);
+                        }}
+                        className="bg-gray-400 text-white px-4 py-2 rounded hover:bg-gray-500 flex items-center gap-2"
+                      >
+                        <X size={16} /> 取消
+                      </button>
+                    )}
                   </div>
                 </div>
-              </div>
-            ))}
+
+                {/* 記錄列表 */}
+                <div className="bg-white rounded-lg shadow p-6">
+                  <h3 className="font-bold text-lg mb-4">📝 旅行記錄</h3>
+                  {selectedExpenses.length === 0 ? (
+                    <div className="text-center py-8 text-gray-400">
+                      <p>還沒有任何記錄</p>
+                      <p className="text-sm mt-2">在上方新增第一筆記錄吧！</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-3">
+                      {selectedExpenses.map((item) => (
+                        <div key={item.id} className="p-4 border rounded-lg hover:shadow-md transition-shadow">
+                          <div className="flex justify-between items-start">
+                            <div className="flex-1">
+                              <div className="flex items-center gap-4 mb-2">
+                                <span className="font-bold text-lg text-green-600">
+                                  ${parseFloat(item.cost).toLocaleString()}
+                                </span>
+                                <span className="text-gray-600">{item.days} 天</span>
+                              </div>
+                              {item.note && (
+                                <p className="text-gray-500 text-sm">{item.note}</p>
+                              )}
+                              <p className="text-xs text-gray-400 mt-2">
+                                {new Date(item.created_at).toLocaleDateString('zh-TW')}
+                              </p>
+                            </div>
+                            <div className="flex gap-2">
+                              <button 
+                                onClick={() => handleEdit(item)} 
+                                className="text-blue-500 hover:bg-blue-50 p-2 rounded transition-colors"
+                                title="編輯"
+                              >
+                                <Edit2 size={16} />
+                              </button>
+                              <button 
+                                onClick={() => handleDelete(item.id)} 
+                                className="text-red-500 hover:bg-red-50 p-2 rounded transition-colors"
+                                title="刪除"
+                              >
+                                <Trash2 size={16} />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              </>
+            )}
           </div>
-        )}
+        </div>
       </div>
     );
   };
